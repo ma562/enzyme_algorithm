@@ -9,6 +9,7 @@ function M4_Main_004_09()
 % accuracy.
 %% INITIALIZATION
 data = readmatrix("Data_nextGen_KEtesting_allresults.csv");
+data = data(3:end, :);   %%update... for some reason the rows are misaligned
 %%all_V0s = [];        %%contains 5 lists of 10 v0s where row 1 is Enzyme A row 2 is Enzyme B and so on
 concentrations = data(1, 2:11);   %%extract concentrations [3.75, 7.5, 15, 30, 65, 125, 250, 500, 1000, 2000] (um)
 all_V0s = zeros(5, 10);     %%preallocate dimensions for speed
@@ -50,16 +51,45 @@ for row = 1:5
     end
 
     [vmax, km] = M4_Algorithm_vmax_km_004_09(v0_vals, point_combos, concentrations);
+    
+
     sse = M4_Algorithm_compute_SSE(v0_vals, km, vmax, concentrations);
     fprintf("Enzyme %s\n", enzymes(row));
-    fprintf("The vmax value is %.4f μM/s\n", vmax);
-    fprintf("The km value is %.4f μM\n", km);
-    fprintf("Yielding an SSE of: %.4f\n", sse);
+    fprintf("The vmax value is %.6f μM/s\n", vmax);
+    fprintf("The km value is %.6f μM\n", km);
+    fprintf("Yielding an SSE of: %.6f\n", sse);
     
     %GRAPH MEASURED V0 COMPARED TO MODEL BASED ON DETERMINED KM & VMAX
     plot(concentrations, v0_vals, "bd");
     hold on
     s = strcat(string(enzymes(row)), ' Velocity (V0s) (μM/s) vs Concentrations [P] (uM)');
+    title(s);
+    ylabel('Velocity (V0s) (μM/s)');
+    xlabel('Concentrations [P] (uM)')
+    pred_v0 = (vmax .* concentrations) ./ (km + concentrations);
+    plot(concentrations, pred_v0);
+    grid on
+    legend("Original V0s", "Model based on calculated V-max and Km", "location", "best");
+    if(row ~= 5) 
+        figure;
+    end
+    
+    %%IMPROVE USING GRADIENT DESCENT
+    %%x values: v0_vals, y_vals: concentrations
+    [vmax, km] = M4_Algorithm_gradient_descent_004_09(vmax, km, concentrations, v0_vals);
+    sse = M4_Algorithm_compute_SSE(v0_vals, km, vmax, concentrations);
+    fprintf("\nPost Gradient Descent\n")
+    fprintf("Enzyme %s\n", enzymes(row));
+    fprintf("The vmax value post gradient descent is %.6f μM/s\n", vmax);
+    fprintf("The km value post gradient descent is %.6f μM\n", km);
+    fprintf("Yielding an SSE of: %.6f\n", sse);
+    fprintf("--------------------------------------\n")
+
+    %GRAPH MEASURED V0 COMPARED TO MODEL BASED ON DETERMINED KM & VMAX -
+    %AFTER GRADIENT DESCENT
+    plot(concentrations, v0_vals, "bd");
+    hold on
+    s = strcat(string(enzymes(row)), ' Final Velocity (V0s) (μM/s) vs Concentrations [P] (uM)');
     title(s);
     ylabel('Velocity (V0s) (μM/s)');
     xlabel('Concentrations [P] (uM)')
